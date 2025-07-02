@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Flappy Bird Clone</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    canvas {
+      display: block;
+      margin: 0 auto;
+      background: #70c5ce;
+      border: 2px solid #000;
+    }
+  </style>
+</head>
+<body>
+<canvas id="flappyBird" width="400" height="600"></canvas>
+
+<script>
+  const canvas = document.getElementById("flappyBird");
+  const ctx = canvas.getContext("2d");
+
+  let frames = 0;
+  const DEGREE = Math.PI / 180;
+
+  // Game state
+  const state = {
+    current: 0,
+    getReady: 0,
+    game: 1,
+    over: 2
+  };
+
+  // Control
+  document.addEventListener("keydown", () => {
+    switch(state.current) {
+      case state.getReady:
+        state.current = state.game;
+        break;
+      case state.game:
+        bird.flap();
+        break;
+      case state.over:
+        pipes.reset();
+        bird.reset();
+        state.current = state.getReady;
+        break;
+    }
+  });
+
+  // Bird
+  const bird = {
+    x: 50,
+    y: 150,
+    radius: 12,
+    gravity: 0.25,
+    jump: 4.6,
+    speed: 0,
+    rotation: 0,
+
+    draw() {
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(this.rotation);
+      ctx.fillStyle = "yellow";
+      ctx.beginPath();
+      ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    },
+
+    flap() {
+      this.speed = -this.jump;
+    },
+
+    update() {
+      if (state.current === state.getReady) {
+        this.y = 150;
+        this.rotation = 0;
+      } else {
+        this.speed += this.gravity;
+        this.y += this.speed;
+
+        if (this.y + this.radius >= canvas.height) {
+          this.y = canvas.height - this.radius;
+          if (state.current === state.game) {
+            state.current = state.over;
+          }
+        }
+
+        this.rotation = this.speed >= this.jump ? 90 * DEGREE : -25 * DEGREE;
+      }
+    },
+
+    reset() {
+      this.speed = 0;
+      this.y = 150;
+    }
+  };
+
+  // Pipes
+  const pipes = {
+    position: [],
+    width: 50,
+    height: 300,
+    gap: 120,
+    maxYPos: -150,
+    dx: 2,
+
+    draw() {
+      for (let i = 0; i < this.position.length; i++) {
+        let p = this.position[i];
+        ctx.fillStyle = "green";
+        ctx.fillRect(p.x, p.y, this.width, this.height);
+        ctx.fillRect(p.x, p.y + this.height + this.gap, this.width, canvas.height);
+      }
+    },
+
+    update() {
+      if (state.current !== state.game) return;
+
+      if (frames % 100 === 0) {
+        this.position.push({
+          x: canvas.width,
+          y: this.maxYPos * (Math.random() + 1)
+        });
+      }
+
+      for (let i = 0; i < this.position.length; i++) {
+        let p = this.position[i];
+
+        p.x -= this.dx;
+
+        // Collision detection
+        if (bird.x + bird.radius > p.x && bird.x - bird.radius < p.x + this.width &&
+            (bird.y - bird.radius < p.y + this.height ||
+             bird.y + bird.radius > p.y + this.height + this.gap)) {
+          state.current = state.over;
+        }
+
+        // Remove offscreen pipes
+        if (p.x + this.width <= 0) {
+          this.position.shift();
+        }
+      }
+    },
+
+    reset() {
+      this.position = [];
+    }
+  };
+
+  function draw() {
+    ctx.fillStyle = "#70c5ce";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    pipes.draw();
+    bird.draw();
+
+    if (state.current === state.getReady) {
+      ctx.fillStyle = "#000";
+      ctx.font = "24px Arial";
+      ctx.fillText("Press Any Key to Start", 70, canvas.height / 2);
+    }
+
+    if (state.current === state.over) {
+      ctx.fillStyle = "#000";
+      ctx.font = "24px Arial";
+      ctx.fillText("Game Over! Press Any Key", 60, canvas.height / 2);
+    }
+  }
+
+  function update() {
+    bird.update();
+    pipes.update();
+  }
+
+  function loop() {
+    update();
+    draw();
+    frames++;
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+</script>
+</body>
+</html>
